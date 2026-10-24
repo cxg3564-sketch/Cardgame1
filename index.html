@@ -32,24 +32,6 @@
           boxShadow: {
             felt: 'inset 0 0 80px rgba(0,0,0,0.45)',
             chip: '0 2px 0 rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.35)',
-            dome: 'inset 0 -12px 30px rgba(255,255,255,0.12), inset 0 20px 40px rgba(0,0,0,0.35)',
-          },
-          keyframes: {
-            shake: {
-              '0%, 100%': { transform: 'translateX(0) rotate(0deg)' },
-              '20%': { transform: 'translateX(-6px) rotate(-3deg)' },
-              '40%': { transform: 'translateX(6px) rotate(3deg)' },
-              '60%': { transform: 'translateX(-4px) rotate(-2deg)' },
-              '80%': { transform: 'translateX(4px) rotate(2deg)' },
-            },
-            pulseGold: {
-              '0%, 100%': { boxShadow: '0 0 0 0 rgba(201,162,39,0.45)' },
-              '50%': { boxShadow: '0 0 0 8px rgba(201,162,39,0)' },
-            },
-          },
-          animation: {
-            shake: 'shake 0.45s ease-in-out',
-            'pulse-gold': 'pulseGold 1.6s ease-in-out infinite',
           },
         },
       },
@@ -76,21 +58,36 @@
 
     .bet-cell {
       position: relative;
-      transition: background-color 0.15s ease, transform 0.12s ease, border-color 0.15s ease;
+      transition: background-color 0.15s ease, transform 0.12s ease, border-color 0.15s ease, box-shadow 0.2s ease;
     }
 
-    .bet-cell:hover {
+    .bet-cell:hover:not(:disabled) {
       background-color: rgba(201, 162, 39, 0.12);
       border-color: rgba(232, 197, 71, 0.55);
     }
 
-    .bet-cell:active {
+    .bet-cell:active:not(:disabled) {
       transform: scale(0.98);
     }
 
     .bet-cell.has-bet {
       border-color: #e8c547;
       background-color: rgba(201, 162, 39, 0.18);
+    }
+
+    .bet-cell.is-win {
+      border-color: #f0d56a;
+      background-color: rgba(232, 197, 71, 0.32);
+      box-shadow: 0 0 18px rgba(232, 197, 71, 0.35);
+    }
+
+    .bet-cell:disabled,
+    .chip-btn:disabled,
+    #clear-btn:disabled,
+    #rebet-btn:disabled,
+    #roll-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
     }
 
     .chip-badge {
@@ -108,21 +105,86 @@
       border: 1px solid #8a7019;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
       pointer-events: none;
+      z-index: 2;
     }
 
+    /* —— Dice face with 3×3 pip grid —— */
     .dice-face {
-      width: 3.25rem;
-      height: 3.25rem;
-      border-radius: 0.65rem;
-      background: linear-gradient(145deg, #f8f4ea, #e4dcc8);
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 0.7rem;
+      background: linear-gradient(145deg, #faf6ec, #e2d8c0);
       border: 2px solid #c9a227;
       box-shadow: 0 4px 0 #8a7019, 0 8px 16px rgba(0, 0, 0, 0.35);
       display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 0.4rem;
+      gap: 0.15rem;
+      transform-style: preserve-3d;
+      perspective: 600px;
+    }
+
+    .dice-face .pip {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #3a2a1a, #0b1c33 70%);
+      justify-self: center;
+      align-self: center;
+      opacity: 0;
+    }
+
+    .dice-face[data-value="1"] .pip:nth-child(5),
+    .dice-face[data-value="2"] .pip:nth-child(1),
+    .dice-face[data-value="2"] .pip:nth-child(9),
+    .dice-face[data-value="3"] .pip:nth-child(1),
+    .dice-face[data-value="3"] .pip:nth-child(5),
+    .dice-face[data-value="3"] .pip:nth-child(9),
+    .dice-face[data-value="4"] .pip:nth-child(1),
+    .dice-face[data-value="4"] .pip:nth-child(3),
+    .dice-face[data-value="4"] .pip:nth-child(7),
+    .dice-face[data-value="4"] .pip:nth-child(9),
+    .dice-face[data-value="5"] .pip:nth-child(1),
+    .dice-face[data-value="5"] .pip:nth-child(3),
+    .dice-face[data-value="5"] .pip:nth-child(5),
+    .dice-face[data-value="5"] .pip:nth-child(7),
+    .dice-face[data-value="5"] .pip:nth-child(9),
+    .dice-face[data-value="6"] .pip:nth-child(1),
+    .dice-face[data-value="6"] .pip:nth-child(3),
+    .dice-face[data-value="6"] .pip:nth-child(4),
+    .dice-face[data-value="6"] .pip:nth-child(6),
+    .dice-face[data-value="6"] .pip:nth-child(7),
+    .dice-face[data-value="6"] .pip:nth-child(9) {
+      opacity: 1;
+    }
+
+    .dice-face.is-blank::after {
+      content: '?';
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+      display: grid;
       place-items: center;
       font-family: 'Cinzel', Georgia, serif;
-      font-size: 1.35rem;
+      font-size: 1.4rem;
       font-weight: 700;
       color: #0b1c33;
+    }
+
+    .dice-face.is-blank .pip {
+      display: none;
+    }
+
+    .dice-face.is-tumbling {
+      animation: dieTumble 0.35s linear infinite;
+    }
+
+    @keyframes dieTumble {
+      0%   { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
+      25%  { transform: rotateX(90deg) rotateY(45deg) rotateZ(20deg) scale(1.05); }
+      50%  { transform: rotateX(180deg) rotateY(90deg) rotateZ(-10deg) scale(0.95); }
+      75%  { transform: rotateX(270deg) rotateY(135deg) rotateZ(15deg) scale(1.05); }
+      100% { transform: rotateX(360deg) rotateY(180deg) rotateZ(0deg) scale(1); }
     }
 
     .shaker-dome {
@@ -134,6 +196,18 @@
       backdrop-filter: blur(1px);
     }
 
+    .shaker-dome.is-shaking {
+      animation: shakerShake 0.22s ease-in-out infinite;
+    }
+
+    @keyframes shakerShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      20% { transform: translate(-10px, 3px) rotate(-4deg); }
+      40% { transform: translate(10px, -2px) rotate(4deg); }
+      60% { transform: translate(-7px, -3px) rotate(-3deg); }
+      80% { transform: translate(7px, 2px) rotate(3deg); }
+    }
+
     .chip-btn.selected {
       outline: 2px solid #e8c547;
       outline-offset: 3px;
@@ -142,6 +216,16 @@
 
     .result-flash {
       animation: pulseGold 1.2s ease-in-out 2;
+    }
+
+    @keyframes pulseGold {
+      0%, 100% { text-shadow: 0 0 0 rgba(232, 197, 71, 0); }
+      50% { text-shadow: 0 0 12px rgba(232, 197, 71, 0.85); }
+    }
+
+    .ui-locked .bet-cell,
+    .ui-locked .chip-btn {
+      pointer-events: none;
     }
   </style>
 </head>
@@ -167,16 +251,28 @@
       </div>
     </header>
 
-    <main class="table-felt overflow-hidden rounded-3xl border-2 border-gold/50 p-3 shadow-felt sm:p-5 lg:p-6">
+    <main id="game-root" class="table-felt overflow-hidden rounded-3xl border-2 border-gold/50 p-3 shadow-felt sm:p-5 lg:p-6">
       <!-- Dice / Shaker -->
       <section class="mb-5 flex flex-col items-center gap-4">
-        <div id="shaker" class="shaker-dome relative flex h-40 w-full max-w-md items-center justify-center gap-4 rounded-[50%] px-8 sm:h-44">
-          <div id="die-1" class="dice-face" aria-label="주사위 1">?</div>
-          <div id="die-2" class="dice-face" aria-label="주사위 2">?</div>
-          <div id="die-3" class="dice-face" aria-label="주사위 3">?</div>
+        <div id="shaker" class="shaker-dome relative flex h-44 w-full max-w-md items-center justify-center gap-5 rounded-[50%] px-8 sm:h-48">
+          <div id="die-1" class="dice-face is-blank" aria-label="주사위 1" data-value="0">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+          <div id="die-2" class="dice-face is-blank" aria-label="주사위 2" data-value="0">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+          <div id="die-3" class="dice-face is-blank" aria-label="주사위 3" data-value="0">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
         </div>
         <div class="flex flex-col items-center gap-2">
-          <p id="result-message" class="min-h-[1.25rem] text-sm text-gold-bright/90">칩을 선택한 뒤 베팅 구역을 클릭하세요</p>
+          <p id="result-message" class="min-h-[1.25rem] text-center text-sm text-gold-bright/90">칩을 선택한 뒤 베팅 구역을 클릭하세요</p>
           <button
             id="roll-btn"
             type="button"
@@ -207,7 +303,6 @@
 
       <!-- Betting board -->
       <section aria-label="베팅 보드" class="space-y-3">
-        <!-- Big / Small / Odd / Even -->
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="big">
             <span class="block font-display text-lg font-bold text-gold-bright">BIG</span>
@@ -231,97 +326,35 @@
           </button>
         </div>
 
-        <!-- Totals 4–17 -->
         <div>
           <h2 class="mb-2 font-display text-sm tracking-widest text-gold/80">TOTAL · 주사위 합계</h2>
           <div id="total-bets" class="grid grid-cols-4 gap-2 sm:grid-cols-7">
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-4">
-              <span class="block font-display text-base font-bold">4</span>
-              <span class="block text-[0.65rem] text-gold/70">50:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-5">
-              <span class="block font-display text-base font-bold">5</span>
-              <span class="block text-[0.65rem] text-gold/70">30:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-6">
-              <span class="block font-display text-base font-bold">6</span>
-              <span class="block text-[0.65rem] text-gold/70">18:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-7">
-              <span class="block font-display text-base font-bold">7</span>
-              <span class="block text-[0.65rem] text-gold/70">12:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-8">
-              <span class="block font-display text-base font-bold">8</span>
-              <span class="block text-[0.65rem] text-gold/70">8:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-9">
-              <span class="block font-display text-base font-bold">9</span>
-              <span class="block text-[0.65rem] text-gold/70">6:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-10">
-              <span class="block font-display text-base font-bold">10</span>
-              <span class="block text-[0.65rem] text-gold/70">6:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-11">
-              <span class="block font-display text-base font-bold">11</span>
-              <span class="block text-[0.65rem] text-gold/70">6:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-12">
-              <span class="block font-display text-base font-bold">12</span>
-              <span class="block text-[0.65rem] text-gold/70">6:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-13">
-              <span class="block font-display text-base font-bold">13</span>
-              <span class="block text-[0.65rem] text-gold/70">8:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-14">
-              <span class="block font-display text-base font-bold">14</span>
-              <span class="block text-[0.65rem] text-gold/70">12:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-15">
-              <span class="block font-display text-base font-bold">15</span>
-              <span class="block text-[0.65rem] text-gold/70">18:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-16">
-              <span class="block font-display text-base font-bold">16</span>
-              <span class="block text-[0.65rem] text-gold/70">30:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-17">
-              <span class="block font-display text-base font-bold">17</span>
-              <span class="block text-[0.65rem] text-gold/70">50:1</span>
-            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-4"><span class="block font-display text-base font-bold">4</span><span class="block text-[0.65rem] text-gold/70">50:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-5"><span class="block font-display text-base font-bold">5</span><span class="block text-[0.65rem] text-gold/70">30:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-6"><span class="block font-display text-base font-bold">6</span><span class="block text-[0.65rem] text-gold/70">18:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-7"><span class="block font-display text-base font-bold">7</span><span class="block text-[0.65rem] text-gold/70">12:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-8"><span class="block font-display text-base font-bold">8</span><span class="block text-[0.65rem] text-gold/70">8:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-9"><span class="block font-display text-base font-bold">9</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-10"><span class="block font-display text-base font-bold">10</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-11"><span class="block font-display text-base font-bold">11</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-12"><span class="block font-display text-base font-bold">12</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-13"><span class="block font-display text-base font-bold">13</span><span class="block text-[0.65rem] text-gold/70">8:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-14"><span class="block font-display text-base font-bold">14</span><span class="block text-[0.65rem] text-gold/70">12:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-15"><span class="block font-display text-base font-bold">15</span><span class="block text-[0.65rem] text-gold/70">18:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-16"><span class="block font-display text-base font-bold">16</span><span class="block text-[0.65rem] text-gold/70">30:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-17"><span class="block font-display text-base font-bold">17</span><span class="block text-[0.65rem] text-gold/70">50:1</span></button>
           </div>
         </div>
 
-        <!-- Triples -->
         <div>
           <h2 class="mb-2 font-display text-sm tracking-widest text-gold/80">TRIPLE · 트리플</h2>
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-1">
-              <span class="block font-display text-sm font-bold text-gold-bright">1-1-1</span>
-              <span class="block text-[0.65rem] text-gold/70">150:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-2">
-              <span class="block font-display text-sm font-bold text-gold-bright">2-2-2</span>
-              <span class="block text-[0.65rem] text-gold/70">150:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-3">
-              <span class="block font-display text-sm font-bold text-gold-bright">3-3-3</span>
-              <span class="block text-[0.65rem] text-gold/70">150:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-4">
-              <span class="block font-display text-sm font-bold text-gold-bright">4-4-4</span>
-              <span class="block text-[0.65rem] text-gold/70">150:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-5">
-              <span class="block font-display text-sm font-bold text-gold-bright">5-5-5</span>
-              <span class="block text-[0.65rem] text-gold/70">150:1</span>
-            </button>
-            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-6">
-              <span class="block font-display text-sm font-bold text-gold-bright">6-6-6</span>
-              <span class="block text-[0.65rem] text-gold/70">150:1</span>
-            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-1"><span class="block font-display text-sm font-bold text-gold-bright">1-1-1</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-2"><span class="block font-display text-sm font-bold text-gold-bright">2-2-2</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-3"><span class="block font-display text-sm font-bold text-gold-bright">3-3-3</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-4"><span class="block font-display text-sm font-bold text-gold-bright">4-4-4</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-5"><span class="block font-display text-sm font-bold text-gold-bright">5-5-5</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-6"><span class="block font-display text-sm font-bold text-gold-bright">6-6-6</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
             <button type="button" class="bet-cell col-span-2 rounded-lg border border-gold/40 bg-gradient-to-b from-navy-soft to-navy px-2 py-4 text-center sm:col-span-2 lg:col-span-1" data-bet="any-triple">
               <span class="block font-display text-sm font-bold text-gold-bright">ANY TRIPLE</span>
               <span class="block text-[0.65rem] text-gold/70">30:1</span>
@@ -338,6 +371,12 @@
 
   <script>
     (() => {
+      /**
+       * Standard Sic Bo payout multipliers (profit only; stake returned on win).
+       * Big/Small/Odd/Even: 1:1
+       * Totals: 4/17→50, 5/16→30, 6/15→18, 7/14→12, 8/13→8, 9–12→6
+       * Specific Triple: 150:1 · Any Triple: 30:1
+       */
       const PAYOUTS = {
         big: 1,
         small: 1,
@@ -366,16 +405,20 @@
         'any-triple': 30,
       };
 
+      const ROLL_DURATION_MS = 1800;
+      const TUMBLE_TICK_MS = 90;
+
       const state = {
         credits: 1000,
         selectedChip: 10,
-        bets: {},
-        lastBets: {},
+        bets: Object.create(null),
+        lastBets: Object.create(null),
         rolling: false,
-        dice: [null, null, null],
+        dice: [0, 0, 0],
       };
 
       const els = {
+        root: document.getElementById('game-root'),
         credit: document.getElementById('credit-display'),
         betTotal: document.getElementById('bet-total-display'),
         message: document.getElementById('result-message'),
@@ -388,9 +431,12 @@
           document.getElementById('die-2'),
           document.getElementById('die-3'),
         ],
+        chipBtns: [...document.querySelectorAll('.chip-btn')],
+        betCells: [...document.querySelectorAll('.bet-cell')],
       };
 
-      const format = (n) => n.toLocaleString('en-US');
+      const format = (n) => Number(n).toLocaleString('en-US');
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
       function betTotal() {
         return Object.values(state.bets).reduce((sum, v) => sum + v, 0);
@@ -399,6 +445,19 @@
       function updateDisplays() {
         els.credit.textContent = format(state.credits);
         els.betTotal.textContent = format(betTotal());
+      }
+
+      function setDieFace(el, value) {
+        const n = Number(value);
+        if (!n || n < 1 || n > 6) {
+          el.dataset.value = '0';
+          el.classList.add('is-blank');
+          el.setAttribute('aria-label', '주사위 (미정)');
+          return;
+        }
+        el.classList.remove('is-blank');
+        el.dataset.value = String(n);
+        el.setAttribute('aria-label', `주사위 ${n}`);
       }
 
       function updateBetBadge(cell) {
@@ -421,33 +480,85 @@
       }
 
       function refreshAllBadges() {
-        document.querySelectorAll('.bet-cell').forEach(updateBetBadge);
+        els.betCells.forEach(updateBetBadge);
+      }
+
+      function clearWinHighlights() {
+        els.betCells.forEach((cell) => cell.classList.remove('is-win'));
+      }
+
+      function highlightWins(wins) {
+        clearWinHighlights();
+        Object.keys(wins).forEach((key) => {
+          const cell = els.root.querySelector(`.bet-cell[data-bet="${key}"]`);
+          if (cell) cell.classList.add('is-win');
+        });
+      }
+
+      function setControlsLocked(locked) {
+        state.rolling = locked;
+        els.root.classList.toggle('ui-locked', locked);
+        els.rollBtn.disabled = locked;
+        els.clearBtn.disabled = locked;
+        els.rebetBtn.disabled = locked;
+        els.chipBtns.forEach((btn) => {
+          btn.disabled = locked;
+        });
+        els.betCells.forEach((cell) => {
+          cell.disabled = locked;
+        });
       }
 
       function placeBet(key) {
         if (state.rolling) return;
+        if (!Object.prototype.hasOwnProperty.call(PAYOUTS, key)) return;
+
         const chip = state.selectedChip;
         if (state.credits < chip) {
           els.message.textContent = '보유 칩이 부족합니다';
           return;
         }
+
+        clearWinHighlights();
         state.credits -= chip;
         state.bets[key] = (state.bets[key] || 0) + chip;
         updateDisplays();
-        const cell = document.querySelector(`.bet-cell[data-bet="${key}"]`);
+
+        const cell = els.root.querySelector(`.bet-cell[data-bet="${key}"]`);
         if (cell) updateBetBadge(cell);
-        els.message.textContent = `${key.toUpperCase()}에 ${format(chip)}칩 베팅`;
+
+        els.message.classList.remove('result-flash');
+        els.message.textContent = `${labelForBet(key)}에 ${format(chip)}칩 베팅 (총 ${format(state.bets[key])})`;
+      }
+
+      function labelForBet(key) {
+        const map = {
+          big: 'BIG',
+          small: 'SMALL',
+          odd: 'ODD',
+          even: 'EVEN',
+          'any-triple': 'ANY TRIPLE',
+        };
+        if (map[key]) return map[key];
+        if (key.startsWith('total-')) return `합계 ${key.slice(6)}`;
+        if (key.startsWith('triple-')) {
+          const n = key.slice(7);
+          return `트리플 ${n}-${n}-${n}`;
+        }
+        return key.toUpperCase();
       }
 
       function clearBets({ refund = true } = {}) {
         if (state.rolling) return;
-        if (refund) {
-          state.credits += betTotal();
-        }
-        state.bets = {};
+        if (refund) state.credits += betTotal();
+        state.bets = Object.create(null);
+        clearWinHighlights();
         refreshAllBadges();
         updateDisplays();
-        els.message.textContent = refund ? '베팅이 취소되었습니다' : '칩을 선택한 뒤 베팅 구역을 클릭하세요';
+        els.message.classList.remove('result-flash');
+        els.message.textContent = refund
+          ? '베팅이 취소되었습니다'
+          : '칩을 선택한 뒤 베팅 구역을 클릭하세요';
       }
 
       function rebet() {
@@ -457,11 +568,13 @@
           els.message.textContent = '반복할 이전 베팅이 없습니다';
           return;
         }
+
         const needed = entries.reduce((sum, [, v]) => sum + v, 0);
         if (state.credits < needed) {
           els.message.textContent = 'Rebet에 필요한 칩이 부족합니다';
           return;
         }
+
         clearBets({ refund: true });
         for (const [key, amount] of entries) {
           state.credits -= amount;
@@ -469,7 +582,7 @@
         }
         refreshAllBadges();
         updateDisplays();
-        els.message.textContent = '이전 베팅을 반복했습니다';
+        els.message.textContent = `이전 베팅을 반복했습니다 (총 ${format(needed)}칩)`;
       }
 
       function rollDie() {
@@ -480,18 +593,21 @@
         return dice[0] === dice[1] && dice[1] === dice[2];
       }
 
+      /** Apply Sic Bo win rules for the rolled dice. */
       function evaluateWins(dice) {
         const sum = dice[0] + dice[1] + dice[2];
         const triple = isTriple(dice);
-        const wins = {};
+        const wins = Object.create(null);
 
+        // Big / Small / Odd / Even — house wins (player loses) on any triple
         if (!triple) {
           if (sum >= 11 && sum <= 17) wins.big = true;
           if (sum >= 4 && sum <= 10) wins.small = true;
           if (sum % 2 === 1) wins.odd = true;
-          if (sum % 2 === 0) wins.even = true;
+          else wins.even = true;
         }
 
+        // Total bets always pay on matching sum (including when sum comes from a triple)
         if (sum >= 4 && sum <= 17) wins[`total-${sum}`] = true;
 
         if (triple) {
@@ -499,36 +615,62 @@
           wins['any-triple'] = true;
         }
 
-        return wins;
+        return { wins, sum, triple };
       }
 
       function settle(dice) {
-        const wins = evaluateWins(dice);
+        const { wins, sum, triple } = evaluateWins(dice);
         let payout = 0;
         let winCount = 0;
+        const wonLabels = [];
 
         for (const [key, stake] of Object.entries(state.bets)) {
           if (wins[key]) {
-            payout += stake + stake * (PAYOUTS[key] || 0);
+            const profit = stake * (PAYOUTS[key] || 0);
+            payout += stake + profit; // return stake + profit
             winCount += 1;
+            wonLabels.push(`${labelForBet(key)}(+${format(stake + profit)})`);
           }
         }
 
         state.lastBets = { ...state.bets };
         state.credits += payout;
-        state.bets = {};
+        state.bets = Object.create(null);
         refreshAllBadges();
         updateDisplays();
+        highlightWins(wins);
 
-        const sum = dice[0] + dice[1] + dice[2];
         const face = `${dice.join('-')} · 합 ${sum}`;
+        const parity = sum % 2 === 1 ? '홀' : '짝';
+        const size = sum >= 11 ? '대' : '소';
+        const meta = triple
+          ? `트리플 → 대/소·홀/짝은 하우스 승`
+          : `${size}/${parity}`;
+
         if (winCount > 0) {
-          els.message.textContent = `${face} · 당첨 ${winCount}곳 · +${format(payout)}칩`;
+          els.message.textContent = `${face} (${meta}) · 당첨 ${winCount}곳 · +${format(payout)}칩`;
           els.message.classList.add('result-flash');
         } else {
-          els.message.textContent = `${face} · 낙첨`;
+          els.message.textContent = `${face} (${meta}) · 낙첨`;
           els.message.classList.remove('result-flash');
         }
+      }
+
+      async function animateRoll(finalDice) {
+        els.shaker.classList.add('is-shaking');
+        els.dice.forEach((el) => el.classList.add('is-tumbling'));
+
+        const started = performance.now();
+        while (performance.now() - started < ROLL_DURATION_MS) {
+          els.dice.forEach((el) => setDieFace(el, rollDie()));
+          await sleep(TUMBLE_TICK_MS);
+        }
+
+        els.dice.forEach((el, i) => {
+          el.classList.remove('is-tumbling');
+          setDieFace(el, finalDice[i]);
+        });
+        els.shaker.classList.remove('is-shaking');
       }
 
       async function roll() {
@@ -538,51 +680,37 @@
           return;
         }
 
-        state.rolling = true;
-        els.rollBtn.disabled = true;
+        clearWinHighlights();
+        setControlsLocked(true);
+        els.message.classList.remove('result-flash');
         els.message.textContent = '주사위 굴리는 중…';
 
         try {
-          els.shaker.classList.add('animate-shake');
-          const final = [rollDie(), rollDie(), rollDie()];
-
-          for (let i = 0; i < 10; i += 1) {
-            els.dice.forEach((el) => {
-              el.textContent = String(rollDie());
-            });
-            await new Promise((r) => setTimeout(r, 55));
-          }
-
-          state.dice = final;
-          els.dice.forEach((el, i) => {
-            el.textContent = String(final[i]);
-          });
-
-          els.shaker.classList.remove('animate-shake');
-          settle(final);
+          const finalDice = [rollDie(), rollDie(), rollDie()];
+          state.dice = finalDice;
+          await animateRoll(finalDice);
+          settle(finalDice);
         } catch (err) {
-          els.message.textContent = '굴리기 오류: ' + (err && err.message ? err.message : String(err));
           console.error(err);
+          els.message.textContent = '굴리기 오류: ' + (err && err.message ? err.message : String(err));
         } finally {
-          state.rolling = false;
-          els.rollBtn.disabled = false;
+          setControlsLocked(false);
         }
       }
 
-      // Expose for keyboard / automation fallbacks
       window.__sicBoRoll = roll;
+      window.__sicBoEvaluate = evaluateWins; // for quick manual checks in DevTools
 
-      // Chip selection
-      document.querySelectorAll('.chip-btn').forEach((btn) => {
+      els.chipBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.chip-btn').forEach((b) => b.classList.remove('selected'));
+          if (state.rolling) return;
+          els.chipBtns.forEach((b) => b.classList.remove('selected'));
           btn.classList.add('selected');
           state.selectedChip = Number(btn.dataset.chip);
         });
       });
 
-      // Betting cells
-      document.querySelectorAll('.bet-cell').forEach((cell) => {
+      els.betCells.forEach((cell) => {
         cell.addEventListener('click', () => placeBet(cell.dataset.bet));
       });
 
@@ -591,23 +719,6 @@
       els.rollBtn.addEventListener('click', (e) => {
         e.preventDefault();
         roll();
-      });
-      // Capture-phase backup in case a child/overlay swallows the bubble
-      document.addEventListener(
-        'click',
-        (e) => {
-          if (e.target && e.target.closest && e.target.closest('#roll-btn')) {
-            roll();
-          }
-        },
-        true
-      );
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === 'r' || e.key === 'R') {
-          const tag = (e.target && e.target.tagName) || '';
-          if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-          roll();
-        }
       });
 
       updateDisplays();
