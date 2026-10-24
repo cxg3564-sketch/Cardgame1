@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sic Bo (다이사이)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            felt: {
+              DEFAULT: '#0d3b2e',
+              deep: '#072820',
+              light: '#145a45',
+            },
+            gold: {
+              DEFAULT: '#c9a227',
+              bright: '#e8c547',
+              dim: '#8a7019',
+            },
+            navy: {
+              DEFAULT: '#0b1c33',
+              soft: '#132a4a',
+            },
+          },
+          fontFamily: {
+            display: ['"Cinzel"', 'Georgia', 'serif'],
+            body: ['"Source Sans 3"', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            felt: 'inset 0 0 80px rgba(0,0,0,0.45)',
+            chip: '0 2px 0 rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.35)',
+            dome: 'inset 0 -12px 30px rgba(255,255,255,0.12), inset 0 20px 40px rgba(0,0,0,0.35)',
+          },
+          keyframes: {
+            shake: {
+              '0%, 100%': { transform: 'translateX(0) rotate(0deg)' },
+              '20%': { transform: 'translateX(-6px) rotate(-3deg)' },
+              '40%': { transform: 'translateX(6px) rotate(3deg)' },
+              '60%': { transform: 'translateX(-4px) rotate(-2deg)' },
+              '80%': { transform: 'translateX(4px) rotate(2deg)' },
+            },
+            pulseGold: {
+              '0%, 100%': { boxShadow: '0 0 0 0 rgba(201,162,39,0.45)' },
+              '50%': { boxShadow: '0 0 0 8px rgba(201,162,39,0)' },
+            },
+          },
+          animation: {
+            shake: 'shake 0.45s ease-in-out',
+            'pulse-gold': 'pulseGold 1.6s ease-in-out infinite',
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background:
+        radial-gradient(ellipse at top, rgba(20, 90, 69, 0.55), transparent 55%),
+        radial-gradient(ellipse at bottom, rgba(11, 28, 51, 0.9), #041018 70%),
+        #041018;
+      min-height: 100vh;
+    }
+
+    .table-felt {
+      background:
+        radial-gradient(ellipse at center, rgba(20, 90, 69, 0.35), transparent 70%),
+        linear-gradient(160deg, #0f4636 0%, #0a2f25 45%, #071f1a 100%);
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
+    }
+
+    .bet-cell {
+      position: relative;
+      transition: background-color 0.15s ease, transform 0.12s ease, border-color 0.15s ease;
+    }
+
+    .bet-cell:hover {
+      background-color: rgba(201, 162, 39, 0.12);
+      border-color: rgba(232, 197, 71, 0.55);
+    }
+
+    .bet-cell:active {
+      transform: scale(0.98);
+    }
+
+    .bet-cell.has-bet {
+      border-color: #e8c547;
+      background-color: rgba(201, 162, 39, 0.18);
+    }
+
+    .chip-badge {
+      position: absolute;
+      top: 0.35rem;
+      right: 0.35rem;
+      min-width: 1.75rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #0b1c33;
+      background: linear-gradient(180deg, #f0d56a, #c9a227);
+      border: 1px solid #8a7019;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+    }
+
+    .dice-face {
+      width: 3.25rem;
+      height: 3.25rem;
+      border-radius: 0.65rem;
+      background: linear-gradient(145deg, #f8f4ea, #e4dcc8);
+      border: 2px solid #c9a227;
+      box-shadow: 0 4px 0 #8a7019, 0 8px 16px rgba(0, 0, 0, 0.35);
+      display: grid;
+      place-items: center;
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #0b1c33;
+    }
+
+    .shaker-dome {
+      background:
+        radial-gradient(ellipse at 50% 18%, rgba(255, 255, 255, 0.28), transparent 42%),
+        linear-gradient(180deg, rgba(180, 220, 255, 0.12), rgba(10, 30, 50, 0.25));
+      border: 2px solid rgba(201, 162, 39, 0.55);
+      box-shadow: inset 0 -12px 30px rgba(255, 255, 255, 0.08), inset 0 20px 40px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(1px);
+    }
+
+    .chip-btn.selected {
+      outline: 2px solid #e8c547;
+      outline-offset: 3px;
+      transform: translateY(-2px);
+    }
+
+    .result-flash {
+      animation: pulseGold 1.2s ease-in-out 2;
+    }
+  </style>
+</head>
+<body class="font-body text-amber-50 antialiased">
+  <div class="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6 lg:px-6">
+    <!-- Header -->
+    <header class="mb-4 flex flex-col gap-3 rounded-2xl border border-gold/40 bg-navy/80 px-4 py-3 shadow-lg backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div>
+        <p class="text-xs uppercase tracking-[0.25em] text-gold/80">Casino Table</p>
+        <h1 class="font-display text-2xl font-bold tracking-wide text-gold-bright sm:text-3xl">
+          Sic Bo <span class="text-amber-100/90">(다이사이)</span>
+        </h1>
+      </div>
+      <div class="flex flex-wrap gap-3 sm:gap-4">
+        <div class="min-w-[8.5rem] rounded-xl border border-gold/30 bg-felt-deep/70 px-4 py-2">
+          <p class="text-[0.7rem] uppercase tracking-wider text-gold/70">보유 칩</p>
+          <p id="credit-display" class="font-display text-xl font-bold text-gold-bright">1,000</p>
+        </div>
+        <div class="min-w-[8.5rem] rounded-xl border border-gold/30 bg-felt-deep/70 px-4 py-2">
+          <p class="text-[0.7rem] uppercase tracking-wider text-gold/70">현재 베팅</p>
+          <p id="bet-total-display" class="font-display text-xl font-bold text-amber-100">0</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="table-felt overflow-hidden rounded-3xl border-2 border-gold/50 p-3 shadow-felt sm:p-5 lg:p-6">
+      <!-- Dice / Shaker -->
+      <section class="mb-5 flex flex-col items-center gap-4">
+        <div id="shaker" class="shaker-dome relative flex h-40 w-full max-w-md items-center justify-center gap-4 rounded-[50%] px-8 sm:h-44">
+          <div id="die-1" class="dice-face" aria-label="주사위 1">?</div>
+          <div id="die-2" class="dice-face" aria-label="주사위 2">?</div>
+          <div id="die-3" class="dice-face" aria-label="주사위 3">?</div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <p id="result-message" class="min-h-[1.25rem] text-sm text-gold-bright/90">칩을 선택한 뒤 베팅 구역을 클릭하세요</p>
+          <button
+            id="roll-btn"
+            type="button"
+            class="rounded-full border-2 border-gold bg-gradient-to-b from-gold-bright to-gold px-10 py-2.5 font-display text-lg font-bold tracking-widest text-navy shadow-chip transition hover:brightness-110 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ROLL
+          </button>
+        </div>
+      </section>
+
+      <!-- Chip bar -->
+      <section class="mb-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
+        <div class="flex flex-wrap items-center justify-center gap-2" role="group" aria-label="칩 단위 선택">
+          <button type="button" data-chip="10" class="chip-btn selected h-12 w-12 rounded-full border-2 border-white/40 bg-rose-600 font-bold text-white shadow-chip">10</button>
+          <button type="button" data-chip="50" class="chip-btn h-12 w-12 rounded-full border-2 border-white/40 bg-sky-600 font-bold text-white shadow-chip">50</button>
+          <button type="button" data-chip="100" class="chip-btn h-12 w-12 rounded-full border-2 border-white/40 bg-emerald-700 font-bold text-white shadow-chip">100</button>
+          <button type="button" data-chip="500" class="chip-btn h-12 w-12 rounded-full border-2 border-amber-200/50 bg-violet-800 font-bold text-white shadow-chip">500</button>
+        </div>
+        <div class="flex gap-2">
+          <button id="clear-btn" type="button" class="rounded-lg border border-gold/40 bg-navy/70 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-gold hover:bg-navy">
+            베팅 취소 (Clear)
+          </button>
+          <button id="rebet-btn" type="button" class="rounded-lg border border-gold/40 bg-navy/70 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-gold hover:bg-navy">
+            베팅 반복 (Rebet)
+          </button>
+        </div>
+      </section>
+
+      <!-- Betting board -->
+      <section aria-label="베팅 보드" class="space-y-3">
+        <!-- Big / Small / Odd / Even -->
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="big">
+            <span class="block font-display text-lg font-bold text-gold-bright">BIG</span>
+            <span class="block text-xs text-amber-100/70">합 11–17 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="small">
+            <span class="block font-display text-lg font-bold text-gold-bright">SMALL</span>
+            <span class="block text-xs text-amber-100/70">합 4–10 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="odd">
+            <span class="block font-display text-lg font-bold text-gold-bright">ODD</span>
+            <span class="block text-xs text-amber-100/70">홀수 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="even">
+            <span class="block font-display text-lg font-bold text-gold-bright">EVEN</span>
+            <span class="block text-xs text-amber-100/70">짝수 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+        </div>
+
+        <!-- Totals 4–17 -->
+        <div>
+          <h2 class="mb-2 font-display text-sm tracking-widest text-gold/80">TOTAL · 주사위 합계</h2>
+          <div id="total-bets" class="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-4">
+              <span class="block font-display text-base font-bold">4</span>
+              <span class="block text-[0.65rem] text-gold/70">50:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-5">
+              <span class="block font-display text-base font-bold">5</span>
+              <span class="block text-[0.65rem] text-gold/70">30:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-6">
+              <span class="block font-display text-base font-bold">6</span>
+              <span class="block text-[0.65rem] text-gold/70">18:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-7">
+              <span class="block font-display text-base font-bold">7</span>
+              <span class="block text-[0.65rem] text-gold/70">12:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-8">
+              <span class="block font-display text-base font-bold">8</span>
+              <span class="block text-[0.65rem] text-gold/70">8:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-9">
+              <span class="block font-display text-base font-bold">9</span>
+              <span class="block text-[0.65rem] text-gold/70">6:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-10">
+              <span class="block font-display text-base font-bold">10</span>
+              <span class="block text-[0.65rem] text-gold/70">6:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-11">
+              <span class="block font-display text-base font-bold">11</span>
+              <span class="block text-[0.65rem] text-gold/70">6:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-12">
+              <span class="block font-display text-base font-bold">12</span>
+              <span class="block text-[0.65rem] text-gold/70">6:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-13">
+              <span class="block font-display text-base font-bold">13</span>
+              <span class="block text-[0.65rem] text-gold/70">8:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-14">
+              <span class="block font-display text-base font-bold">14</span>
+              <span class="block text-[0.65rem] text-gold/70">12:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-15">
+              <span class="block font-display text-base font-bold">15</span>
+              <span class="block text-[0.65rem] text-gold/70">18:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-16">
+              <span class="block font-display text-base font-bold">16</span>
+              <span class="block text-[0.65rem] text-gold/70">30:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-17">
+              <span class="block font-display text-base font-bold">17</span>
+              <span class="block text-[0.65rem] text-gold/70">50:1</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Triples -->
+        <div>
+          <h2 class="mb-2 font-display text-sm tracking-widest text-gold/80">TRIPLE · 트리플</h2>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-1">
+              <span class="block font-display text-sm font-bold text-gold-bright">1-1-1</span>
+              <span class="block text-[0.65rem] text-gold/70">150:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-2">
+              <span class="block font-display text-sm font-bold text-gold-bright">2-2-2</span>
+              <span class="block text-[0.65rem] text-gold/70">150:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-3">
+              <span class="block font-display text-sm font-bold text-gold-bright">3-3-3</span>
+              <span class="block text-[0.65rem] text-gold/70">150:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-4">
+              <span class="block font-display text-sm font-bold text-gold-bright">4-4-4</span>
+              <span class="block text-[0.65rem] text-gold/70">150:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-5">
+              <span class="block font-display text-sm font-bold text-gold-bright">5-5-5</span>
+              <span class="block text-[0.65rem] text-gold/70">150:1</span>
+            </button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-6">
+              <span class="block font-display text-sm font-bold text-gold-bright">6-6-6</span>
+              <span class="block text-[0.65rem] text-gold/70">150:1</span>
+            </button>
+            <button type="button" class="bet-cell col-span-2 rounded-lg border border-gold/40 bg-gradient-to-b from-navy-soft to-navy px-2 py-4 text-center sm:col-span-2 lg:col-span-1" data-bet="any-triple">
+              <span class="block font-display text-sm font-bold text-gold-bright">ANY TRIPLE</span>
+              <span class="block text-[0.65rem] text-gold/70">30:1</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mt-4 text-center text-xs text-amber-100/40">
+      Sic Bo demo · 정적 SPA · Vercel 호스팅용
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const PAYOUTS = {
+        big: 1,
+        small: 1,
+        odd: 1,
+        even: 1,
+        'total-4': 50,
+        'total-5': 30,
+        'total-6': 18,
+        'total-7': 12,
+        'total-8': 8,
+        'total-9': 6,
+        'total-10': 6,
+        'total-11': 6,
+        'total-12': 6,
+        'total-13': 8,
+        'total-14': 12,
+        'total-15': 18,
+        'total-16': 30,
+        'total-17': 50,
+        'triple-1': 150,
+        'triple-2': 150,
+        'triple-3': 150,
+        'triple-4': 150,
+        'triple-5': 150,
+        'triple-6': 150,
+        'any-triple': 30,
+      };
+
+      const state = {
+        credits: 1000,
+        selectedChip: 10,
+        bets: {},
+        lastBets: {},
+        rolling: false,
+        dice: [null, null, null],
+      };
+
+      const els = {
+        credit: document.getElementById('credit-display'),
+        betTotal: document.getElementById('bet-total-display'),
+        message: document.getElementById('result-message'),
+        shaker: document.getElementById('shaker'),
+        rollBtn: document.getElementById('roll-btn'),
+        clearBtn: document.getElementById('clear-btn'),
+        rebetBtn: document.getElementById('rebet-btn'),
+        dice: [
+          document.getElementById('die-1'),
+          document.getElementById('die-2'),
+          document.getElementById('die-3'),
+        ],
+      };
+
+      const format = (n) => n.toLocaleString('en-US');
+
+      function betTotal() {
+        return Object.values(state.bets).reduce((sum, v) => sum + v, 0);
+      }
+
+      function updateDisplays() {
+        els.credit.textContent = format(state.credits);
+        els.betTotal.textContent = format(betTotal());
+      }
+
+      function updateBetBadge(cell) {
+        const key = cell.dataset.bet;
+        const amount = state.bets[key] || 0;
+        let badge = cell.querySelector('.chip-badge');
+
+        if (amount > 0) {
+          cell.classList.add('has-bet');
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'chip-badge';
+            cell.appendChild(badge);
+          }
+          badge.textContent = format(amount);
+        } else {
+          cell.classList.remove('has-bet');
+          if (badge) badge.remove();
+        }
+      }
+
+      function refreshAllBadges() {
+        document.querySelectorAll('.bet-cell').forEach(updateBetBadge);
+      }
+
+      function placeBet(key) {
+        if (state.rolling) return;
+        const chip = state.selectedChip;
+        if (state.credits < chip) {
+          els.message.textContent = '보유 칩이 부족합니다';
+          return;
+        }
+        state.credits -= chip;
+        state.bets[key] = (state.bets[key] || 0) + chip;
+        updateDisplays();
+        const cell = document.querySelector(`.bet-cell[data-bet="${key}"]`);
+        if (cell) updateBetBadge(cell);
+        els.message.textContent = `${key.toUpperCase()}에 ${format(chip)}칩 베팅`;
+      }
+
+      function clearBets({ refund = true } = {}) {
+        if (state.rolling) return;
+        if (refund) {
+          state.credits += betTotal();
+        }
+        state.bets = {};
+        refreshAllBadges();
+        updateDisplays();
+        els.message.textContent = refund ? '베팅이 취소되었습니다' : '칩을 선택한 뒤 베팅 구역을 클릭하세요';
+      }
+
+      function rebet() {
+        if (state.rolling) return;
+        const entries = Object.entries(state.lastBets);
+        if (!entries.length) {
+          els.message.textContent = '반복할 이전 베팅이 없습니다';
+          return;
+        }
+        const needed = entries.reduce((sum, [, v]) => sum + v, 0);
+        if (state.credits < needed) {
+          els.message.textContent = 'Rebet에 필요한 칩이 부족합니다';
+          return;
+        }
+        clearBets({ refund: true });
+        for (const [key, amount] of entries) {
+          state.credits -= amount;
+          state.bets[key] = amount;
+        }
+        refreshAllBadges();
+        updateDisplays();
+        els.message.textContent = '이전 베팅을 반복했습니다';
+      }
+
+      function rollDie() {
+        return 1 + Math.floor(Math.random() * 6);
+      }
+
+      function isTriple(dice) {
+        return dice[0] === dice[1] && dice[1] === dice[2];
+      }
+
+      function evaluateWins(dice) {
+        const sum = dice[0] + dice[1] + dice[2];
+        const triple = isTriple(dice);
+        const wins = {};
+
+        if (!triple) {
+          if (sum >= 11 && sum <= 17) wins.big = true;
+          if (sum >= 4 && sum <= 10) wins.small = true;
+          if (sum % 2 === 1) wins.odd = true;
+          if (sum % 2 === 0) wins.even = true;
+        }
+
+        if (sum >= 4 && sum <= 17) wins[`total-${sum}`] = true;
+
+        if (triple) {
+          wins[`triple-${dice[0]}`] = true;
+          wins['any-triple'] = true;
+        }
+
+        return wins;
+      }
+
+      function settle(dice) {
+        const wins = evaluateWins(dice);
+        let payout = 0;
+        let winCount = 0;
+
+        for (const [key, stake] of Object.entries(state.bets)) {
+          if (wins[key]) {
+            payout += stake + stake * (PAYOUTS[key] || 0);
+            winCount += 1;
+          }
+        }
+
+        state.lastBets = { ...state.bets };
+        state.credits += payout;
+        state.bets = {};
+        refreshAllBadges();
+        updateDisplays();
+
+        const sum = dice[0] + dice[1] + dice[2];
+        const face = `${dice.join('-')} · 합 ${sum}`;
+        if (winCount > 0) {
+          els.message.textContent = `${face} · 당첨 ${winCount}곳 · +${format(payout)}칩`;
+          els.message.classList.add('result-flash');
+        } else {
+          els.message.textContent = `${face} · 낙첨`;
+          els.message.classList.remove('result-flash');
+        }
+      }
+
+      async function roll() {
+        if (state.rolling) return;
+        if (betTotal() === 0) {
+          els.message.textContent = '먼저 베팅을 해주세요';
+          return;
+        }
+
+        state.rolling = true;
+        els.rollBtn.disabled = true;
+        els.message.textContent = '주사위 굴리는 중…';
+        els.shaker.classList.add('animate-shake');
+
+        const final = [rollDie(), rollDie(), rollDie()];
+
+        for (let i = 0; i < 10; i += 1) {
+          els.dice.forEach((el) => {
+            el.textContent = String(rollDie());
+          });
+          await new Promise((r) => setTimeout(r, 55));
+        }
+
+        state.dice = final;
+        els.dice.forEach((el, i) => {
+          el.textContent = String(final[i]);
+        });
+
+        els.shaker.classList.remove('animate-shake');
+        settle(final);
+        state.rolling = false;
+        els.rollBtn.disabled = false;
+      }
+
+      // Chip selection
+      document.querySelectorAll('.chip-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.chip-btn').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          state.selectedChip = Number(btn.dataset.chip);
+        });
+      });
+
+      // Betting cells
+      document.querySelectorAll('.bet-cell').forEach((cell) => {
+        cell.addEventListener('click', () => placeBet(cell.dataset.bet));
+      });
+
+      els.clearBtn.addEventListener('click', () => clearBets({ refund: true }));
+      els.rebetBtn.addEventListener('click', rebet);
+      els.rollBtn.addEventListener('click', roll);
+
+      updateDisplays();
+    })();
+  </script>
+</body>
+</html>
