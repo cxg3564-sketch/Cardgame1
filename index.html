@@ -180,9 +180,9 @@
           <button
             id="roll-btn"
             type="button"
-            class="rounded-full border-2 border-gold bg-gradient-to-b from-gold-bright to-gold px-10 py-2.5 font-display text-lg font-bold tracking-widest text-navy shadow-chip transition hover:brightness-110 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+            class="min-h-[3.25rem] min-w-[12rem] rounded-full border-2 border-gold bg-gradient-to-b from-gold-bright to-gold px-12 py-3 font-display text-xl font-bold tracking-widest text-navy shadow-chip transition hover:brightness-110 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            ROLL
+            ROLL (주사위 굴리기)
           </button>
         </div>
       </section>
@@ -541,27 +541,36 @@
         state.rolling = true;
         els.rollBtn.disabled = true;
         els.message.textContent = '주사위 굴리는 중…';
-        els.shaker.classList.add('animate-shake');
 
-        const final = [rollDie(), rollDie(), rollDie()];
+        try {
+          els.shaker.classList.add('animate-shake');
+          const final = [rollDie(), rollDie(), rollDie()];
 
-        for (let i = 0; i < 10; i += 1) {
-          els.dice.forEach((el) => {
-            el.textContent = String(rollDie());
+          for (let i = 0; i < 10; i += 1) {
+            els.dice.forEach((el) => {
+              el.textContent = String(rollDie());
+            });
+            await new Promise((r) => setTimeout(r, 55));
+          }
+
+          state.dice = final;
+          els.dice.forEach((el, i) => {
+            el.textContent = String(final[i]);
           });
-          await new Promise((r) => setTimeout(r, 55));
+
+          els.shaker.classList.remove('animate-shake');
+          settle(final);
+        } catch (err) {
+          els.message.textContent = '굴리기 오류: ' + (err && err.message ? err.message : String(err));
+          console.error(err);
+        } finally {
+          state.rolling = false;
+          els.rollBtn.disabled = false;
         }
-
-        state.dice = final;
-        els.dice.forEach((el, i) => {
-          el.textContent = String(final[i]);
-        });
-
-        els.shaker.classList.remove('animate-shake');
-        settle(final);
-        state.rolling = false;
-        els.rollBtn.disabled = false;
       }
+
+      // Expose for keyboard / automation fallbacks
+      window.__sicBoRoll = roll;
 
       // Chip selection
       document.querySelectorAll('.chip-btn').forEach((btn) => {
@@ -579,7 +588,27 @@
 
       els.clearBtn.addEventListener('click', () => clearBets({ refund: true }));
       els.rebetBtn.addEventListener('click', rebet);
-      els.rollBtn.addEventListener('click', roll);
+      els.rollBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        roll();
+      });
+      // Capture-phase backup in case a child/overlay swallows the bubble
+      document.addEventListener(
+        'click',
+        (e) => {
+          if (e.target && e.target.closest && e.target.closest('#roll-btn')) {
+            roll();
+          }
+        },
+        true
+      );
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === 'r' || e.key === 'R') {
+          const tag = (e.target && e.target.tagName) || '';
+          if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+          roll();
+        }
+      });
 
       updateDisplays();
     })();
