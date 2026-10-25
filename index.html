@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sic Bo (다이사이) — 브라우저에서 즐기는 카지노 주사위 게임" />
+  <title>Sic Bo (다이사이)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            felt: { DEFAULT: '#0d3b2e', deep: '#072820', light: '#145a45' },
+            gold: { DEFAULT: '#c9a227', bright: '#e8c547', dim: '#8a7019' },
+            navy: { DEFAULT: '#0b1c33', soft: '#132a4a' },
+          },
+          fontFamily: {
+            display: ['"Cinzel"', 'Georgia', 'serif'],
+            body: ['"Source Sans 3"', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            felt: 'inset 0 0 80px rgba(0,0,0,0.45)',
+            chip: '0 2px 0 rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.35)',
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background:
+        radial-gradient(ellipse at top, rgba(20, 90, 69, 0.55), transparent 55%),
+        radial-gradient(ellipse at bottom, rgba(11, 28, 51, 0.9), #041018 70%),
+        #041018;
+      min-height: 100vh;
+    }
+
+    .table-felt {
+      background:
+        radial-gradient(ellipse at center, rgba(20, 90, 69, 0.35), transparent 70%),
+        linear-gradient(160deg, #0f4636 0%, #0a2f25 45%, #071f1a 100%);
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
+    }
+
+    .bet-cell {
+      position: relative;
+      transition: background-color 0.15s ease, transform 0.12s ease, border-color 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    .bet-cell:hover:not(:disabled) {
+      background-color: rgba(201, 162, 39, 0.12);
+      border-color: rgba(232, 197, 71, 0.55);
+    }
+
+    .bet-cell:active:not(:disabled) { transform: scale(0.98); }
+
+    .bet-cell.has-bet {
+      border-color: #e8c547;
+      background-color: rgba(201, 162, 39, 0.18);
+    }
+
+    .bet-cell.is-win {
+      border-color: #ffe08a;
+      background-color: rgba(232, 197, 71, 0.38);
+      animation: winGlow 0.85s ease-in-out 3;
+      box-shadow: 0 0 0 1px rgba(255, 224, 138, 0.7), 0 0 22px rgba(232, 197, 71, 0.65);
+    }
+
+    @keyframes winGlow {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(255, 224, 138, 0.55), 0 0 12px rgba(232, 197, 71, 0.35); }
+      50% { box-shadow: 0 0 0 2px rgba(255, 240, 180, 0.95), 0 0 28px rgba(255, 214, 90, 0.9); }
+    }
+
+    .bet-cell:disabled,
+    .chip-btn:disabled,
+    #clear-btn:disabled,
+    #rebet-btn:disabled,
+    #roll-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .chip-badge {
+      position: absolute;
+      top: 0.35rem;
+      right: 0.35rem;
+      min-width: 1.75rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #0b1c33;
+      background: linear-gradient(180deg, #f0d56a, #c9a227);
+      border: 1px solid #8a7019;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .dice-face {
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 0.7rem;
+      background: linear-gradient(145deg, #faf6ec, #e2d8c0);
+      border: 2px solid #c9a227;
+      box-shadow: 0 4px 0 #8a7019, 0 8px 16px rgba(0, 0, 0, 0.35);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 0.4rem;
+      gap: 0.15rem;
+      transform-style: preserve-3d;
+    }
+
+    .dice-face .pip {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #3a2a1a, #0b1c33 70%);
+      justify-self: center;
+      align-self: center;
+      opacity: 0;
+    }
+
+    .dice-face[data-value="1"] .pip:nth-child(5),
+    .dice-face[data-value="2"] .pip:nth-child(1),
+    .dice-face[data-value="2"] .pip:nth-child(9),
+    .dice-face[data-value="3"] .pip:nth-child(1),
+    .dice-face[data-value="3"] .pip:nth-child(5),
+    .dice-face[data-value="3"] .pip:nth-child(9),
+    .dice-face[data-value="4"] .pip:nth-child(1),
+    .dice-face[data-value="4"] .pip:nth-child(3),
+    .dice-face[data-value="4"] .pip:nth-child(7),
+    .dice-face[data-value="4"] .pip:nth-child(9),
+    .dice-face[data-value="5"] .pip:nth-child(1),
+    .dice-face[data-value="5"] .pip:nth-child(3),
+    .dice-face[data-value="5"] .pip:nth-child(5),
+    .dice-face[data-value="5"] .pip:nth-child(7),
+    .dice-face[data-value="5"] .pip:nth-child(9),
+    .dice-face[data-value="6"] .pip:nth-child(1),
+    .dice-face[data-value="6"] .pip:nth-child(3),
+    .dice-face[data-value="6"] .pip:nth-child(4),
+    .dice-face[data-value="6"] .pip:nth-child(6),
+    .dice-face[data-value="6"] .pip:nth-child(7),
+    .dice-face[data-value="6"] .pip:nth-child(9) { opacity: 1; }
+
+    .dice-face.is-blank::after {
+      content: '?';
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+      display: grid;
+      place-items: center;
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #0b1c33;
+    }
+
+    .dice-face.is-blank .pip { display: none; }
+
+    .dice-face.is-tumbling {
+      animation: dieTumble 0.35s linear infinite;
+    }
+
+    @keyframes dieTumble {
+      0%   { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
+      25%  { transform: rotateX(90deg) rotateY(45deg) rotateZ(20deg) scale(1.05); }
+      50%  { transform: rotateX(180deg) rotateY(90deg) rotateZ(-10deg) scale(0.95); }
+      75%  { transform: rotateX(270deg) rotateY(135deg) rotateZ(15deg) scale(1.05); }
+      100% { transform: rotateX(360deg) rotateY(180deg) rotateZ(0deg) scale(1); }
+    }
+
+    .shaker-dome {
+      background:
+        radial-gradient(ellipse at 50% 18%, rgba(255, 255, 255, 0.28), transparent 42%),
+        linear-gradient(180deg, rgba(180, 220, 255, 0.12), rgba(10, 30, 50, 0.25));
+      border: 2px solid rgba(201, 162, 39, 0.55);
+      box-shadow: inset 0 -12px 30px rgba(255, 255, 255, 0.08), inset 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .shaker-dome.is-shaking {
+      animation: shakerShake 0.22s ease-in-out infinite;
+    }
+
+    @keyframes shakerShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      20% { transform: translate(-10px, 3px) rotate(-4deg); }
+      40% { transform: translate(10px, -2px) rotate(4deg); }
+      60% { transform: translate(-7px, -3px) rotate(-3deg); }
+      80% { transform: translate(7px, 2px) rotate(3deg); }
+    }
+
+    .chip-btn.selected {
+      outline: 2px solid #e8c547;
+      outline-offset: 3px;
+      transform: translateY(-2px);
+    }
+
+    .result-flash {
+      animation: pulseGold 1.2s ease-in-out 2;
+    }
+
+    @keyframes pulseGold {
+      0%, 100% { text-shadow: 0 0 0 rgba(232, 197, 71, 0); }
+      50% { text-shadow: 0 0 12px rgba(232, 197, 71, 0.85); }
+    }
+
+    .ui-locked .bet-cell,
+    .ui-locked .chip-btn { pointer-events: none; }
+
+    /* Toast / floating payout */
+    #toast-layer {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 18vh;
+    }
+
+    .toast {
+      min-width: 12rem;
+      padding: 0.85rem 1.35rem;
+      border-radius: 9999px;
+      font-family: 'Cinzel', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: 0.04em;
+      border: 1px solid rgba(232, 197, 71, 0.65);
+      background: linear-gradient(180deg, rgba(20, 40, 30, 0.95), rgba(8, 20, 16, 0.95));
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 24px rgba(232, 197, 71, 0.25);
+      animation: toastIn 2.4s ease forwards;
+      color: #e8c547;
+    }
+
+    .toast.lose {
+      color: #f0cfcf;
+      border-color: rgba(200, 120, 120, 0.55);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .toast.warn {
+      color: #f5d78e;
+    }
+
+    @keyframes toastIn {
+      0% { opacity: 0; transform: translateY(18px) scale(0.92); }
+      12% { opacity: 1; transform: translateY(0) scale(1); }
+      75% { opacity: 1; transform: translateY(-8px) scale(1); }
+      100% { opacity: 0; transform: translateY(-28px) scale(0.98); }
+    }
+
+    .float-payout {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, 0);
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700;
+      color: #ffe08a;
+      text-shadow: 0 0 18px rgba(255, 214, 90, 0.8), 0 2px 0 #8a7019;
+      animation: floatUp 1.8s ease-out forwards;
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translate(-50%, 12px) scale(0.85); }
+      20% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
+      100% { opacity: 0; transform: translate(-50%, -48px) scale(1); }
+    }
+
+    /* History roadmap */
+    .history-board {
+      background: linear-gradient(180deg, rgba(11, 28, 51, 0.92), rgba(7, 18, 32, 0.95));
+      border: 1px solid rgba(201, 162, 39, 0.4);
+    }
+
+    .history-item {
+      min-width: 4.6rem;
+      border: 1px solid rgba(201, 162, 39, 0.28);
+      background: rgba(13, 59, 46, 0.45);
+    }
+
+    .history-item .tag-big { color: #7dd3a0; }
+    .history-item .tag-small { color: #7eb6e8; }
+    .history-item .tag-triple { color: #f0b45a; }
+
+    .history-empty {
+      color: rgba(245, 215, 142, 0.35);
+      font-size: 0.75rem;
+    }
+
+    #recharge-btn {
+      display: none;
+      animation: pulseGold 1.6s ease-in-out infinite;
+    }
+
+    #recharge-btn.is-visible { display: inline-flex; }
+  </style>
+</head>
+<body class="font-body text-amber-50 antialiased">
+  <div id="toast-layer" aria-live="polite"></div>
+
+  <div class="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6 lg:px-6">
+    <header class="mb-4 flex flex-col gap-3 rounded-2xl border border-gold/40 bg-navy/80 px-4 py-3 shadow-lg backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div>
+        <p class="text-xs uppercase tracking-[0.25em] text-gold/80">Casino Table</p>
+        <h1 class="font-display text-2xl font-bold tracking-wide text-gold-bright sm:text-3xl">
+          Sic Bo <span class="text-amber-100/90">(다이사이)</span>
+        </h1>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+        <div class="min-w-[8.5rem] rounded-xl border border-gold/30 bg-felt-deep/70 px-4 py-2">
+          <p class="text-[0.7rem] uppercase tracking-wider text-gold/70">보유 칩</p>
+          <p id="credit-display" class="font-display text-xl font-bold text-gold-bright">1,000</p>
+        </div>
+        <div class="min-w-[8.5rem] rounded-xl border border-gold/30 bg-felt-deep/70 px-4 py-2">
+          <p class="text-[0.7rem] uppercase tracking-wider text-gold/70">현재 베팅</p>
+          <p id="bet-total-display" class="font-display text-xl font-bold text-amber-100">0</p>
+        </div>
+        <button
+          id="recharge-btn"
+          type="button"
+          class="items-center justify-center rounded-full border-2 border-gold bg-gradient-to-b from-gold-bright to-gold px-5 py-2 font-display text-sm font-bold text-navy shadow-chip"
+        >
+          무료 충전 (Recharge)
+        </button>
+      </div>
+    </header>
+
+    <!-- History / Roadmap -->
+    <section class="history-board mb-4 overflow-hidden rounded-2xl px-3 py-3 sm:px-4" aria-label="최근 결과 히스토리">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <h2 class="font-display text-xs tracking-[0.2em] text-gold/80">ROADMAP · 최근 10회</h2>
+        <p id="history-hint" class="history-empty">아직 기록이 없습니다 · ROLL 후 결과가 쌓입니다</p>
+      </div>
+      <div id="history-list" class="flex gap-2 overflow-x-auto pb-1"></div>
+    </section>
+
+    <main id="game-root" class="table-felt relative overflow-hidden rounded-3xl border-2 border-gold/50 p-3 shadow-felt sm:p-5 lg:p-6">
+      <div id="float-layer" class="pointer-events-none absolute inset-0 z-20"></div>
+
+      <section class="mb-5 flex flex-col items-center gap-4">
+        <div id="shaker" class="shaker-dome relative flex h-44 w-full max-w-md items-center justify-center gap-5 rounded-[50%] px-8 sm:h-48">
+          <div id="die-1" class="dice-face is-blank" aria-label="주사위 1" data-value="0">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+          <div id="die-2" class="dice-face is-blank" aria-label="주사위 2" data-value="0">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+          <div id="die-3" class="dice-face is-blank" aria-label="주사위 3" data-value="0">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <p id="result-message" class="min-h-[1.25rem] text-center text-sm text-gold-bright/90">칩을 선택한 뒤 베팅 구역을 클릭하세요</p>
+          <button
+            id="roll-btn"
+            type="button"
+            class="min-h-[3.25rem] min-w-[12rem] rounded-full border-2 border-gold bg-gradient-to-b from-gold-bright to-gold px-12 py-3 font-display text-xl font-bold tracking-widest text-navy shadow-chip transition hover:brightness-110 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ROLL (주사위 굴리기)
+          </button>
+        </div>
+      </section>
+
+      <section class="mb-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
+        <div class="flex flex-wrap items-center justify-center gap-2" role="group" aria-label="칩 단위 선택">
+          <button type="button" data-chip="10" class="chip-btn selected h-12 w-12 rounded-full border-2 border-white/40 bg-rose-600 font-bold text-white shadow-chip">10</button>
+          <button type="button" data-chip="50" class="chip-btn h-12 w-12 rounded-full border-2 border-white/40 bg-sky-600 font-bold text-white shadow-chip">50</button>
+          <button type="button" data-chip="100" class="chip-btn h-12 w-12 rounded-full border-2 border-white/40 bg-emerald-700 font-bold text-white shadow-chip">100</button>
+          <button type="button" data-chip="500" class="chip-btn h-12 w-12 rounded-full border-2 border-amber-200/50 bg-violet-800 font-bold text-white shadow-chip">500</button>
+        </div>
+        <div class="flex gap-2">
+          <button id="clear-btn" type="button" class="rounded-lg border border-gold/40 bg-navy/70 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-gold hover:bg-navy">
+            베팅 취소 (Clear)
+          </button>
+          <button id="rebet-btn" type="button" class="rounded-lg border border-gold/40 bg-navy/70 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-gold hover:bg-navy">
+            베팅 반복 (Rebet)
+          </button>
+        </div>
+      </section>
+
+      <section aria-label="베팅 보드" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="big">
+            <span class="block font-display text-lg font-bold text-gold-bright">BIG</span>
+            <span class="block text-xs text-amber-100/70">합 11–17 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="small">
+            <span class="block font-display text-lg font-bold text-gold-bright">SMALL</span>
+            <span class="block text-xs text-amber-100/70">합 4–10 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="odd">
+            <span class="block font-display text-lg font-bold text-gold-bright">ODD</span>
+            <span class="block text-xs text-amber-100/70">홀수 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+          <button type="button" class="bet-cell rounded-xl border border-gold/35 bg-navy/40 px-3 py-5 text-center" data-bet="even">
+            <span class="block font-display text-lg font-bold text-gold-bright">EVEN</span>
+            <span class="block text-xs text-amber-100/70">짝수 · 1:1</span>
+            <span class="block text-[0.65rem] text-amber-100/50">(트리플 제외)</span>
+          </button>
+        </div>
+
+        <div>
+          <h2 class="mb-2 font-display text-sm tracking-widest text-gold/80">TOTAL · 주사위 합계</h2>
+          <div class="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-4"><span class="block font-display text-base font-bold">4</span><span class="block text-[0.65rem] text-gold/70">50:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-5"><span class="block font-display text-base font-bold">5</span><span class="block text-[0.65rem] text-gold/70">30:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-6"><span class="block font-display text-base font-bold">6</span><span class="block text-[0.65rem] text-gold/70">18:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-7"><span class="block font-display text-base font-bold">7</span><span class="block text-[0.65rem] text-gold/70">12:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-8"><span class="block font-display text-base font-bold">8</span><span class="block text-[0.65rem] text-gold/70">8:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-9"><span class="block font-display text-base font-bold">9</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-10"><span class="block font-display text-base font-bold">10</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-11"><span class="block font-display text-base font-bold">11</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-12"><span class="block font-display text-base font-bold">12</span><span class="block text-[0.65rem] text-gold/70">6:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-13"><span class="block font-display text-base font-bold">13</span><span class="block text-[0.65rem] text-gold/70">8:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-14"><span class="block font-display text-base font-bold">14</span><span class="block text-[0.65rem] text-gold/70">12:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-15"><span class="block font-display text-base font-bold">15</span><span class="block text-[0.65rem] text-gold/70">18:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-16"><span class="block font-display text-base font-bold">16</span><span class="block text-[0.65rem] text-gold/70">30:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-felt-deep/80 px-1 py-3 text-center" data-bet="total-17"><span class="block font-display text-base font-bold">17</span><span class="block text-[0.65rem] text-gold/70">50:1</span></button>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="mb-2 font-display text-sm tracking-widest text-gold/80">TRIPLE · 트리플</h2>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-1"><span class="block font-display text-sm font-bold text-gold-bright">1-1-1</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-2"><span class="block font-display text-sm font-bold text-gold-bright">2-2-2</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-3"><span class="block font-display text-sm font-bold text-gold-bright">3-3-3</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-4"><span class="block font-display text-sm font-bold text-gold-bright">4-4-4</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-5"><span class="block font-display text-sm font-bold text-gold-bright">5-5-5</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell rounded-lg border border-gold/30 bg-navy/50 px-2 py-4 text-center" data-bet="triple-6"><span class="block font-display text-sm font-bold text-gold-bright">6-6-6</span><span class="block text-[0.65rem] text-gold/70">150:1</span></button>
+            <button type="button" class="bet-cell col-span-2 rounded-lg border border-gold/40 bg-gradient-to-b from-navy-soft to-navy px-2 py-4 text-center sm:col-span-2 lg:col-span-1" data-bet="any-triple">
+              <span class="block font-display text-sm font-bold text-gold-bright">ANY TRIPLE</span>
+              <span class="block text-[0.65rem] text-gold/70">30:1</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mt-4 text-center text-xs text-amber-100/40">
+      Sic Bo arcade · 정적 SPA · Vercel 즉시 배포
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const PAYOUTS = {
+        big: 1, small: 1, odd: 1, even: 1,
+        'total-4': 50, 'total-5': 30, 'total-6': 18, 'total-7': 12, 'total-8': 8,
+        'total-9': 6, 'total-10': 6, 'total-11': 6, 'total-12': 6,
+        'total-13': 8, 'total-14': 12, 'total-15': 18, 'total-16': 30, 'total-17': 50,
+        'triple-1': 150, 'triple-2': 150, 'triple-3': 150,
+        'triple-4': 150, 'triple-5': 150, 'triple-6': 150,
+        'any-triple': 30,
+      };
+
+      const ROLL_DURATION_MS = 1800;
+      const TUMBLE_TICK_MS = 90;
+      const HISTORY_LIMIT = 10;
+      const STARTING_CREDITS = 1000;
+      const RECHARGE_AMOUNT = 1000;
+
+      const state = {
+        credits: STARTING_CREDITS,
+        selectedChip: 10,
+        bets: Object.create(null),
+        lastBets: Object.create(null),
+        rolling: false,
+        dice: [0, 0, 0],
+        history: [],
+      };
+
+      const els = {
+        root: document.getElementById('game-root'),
+        credit: document.getElementById('credit-display'),
+        betTotal: document.getElementById('bet-total-display'),
+        message: document.getElementById('result-message'),
+        shaker: document.getElementById('shaker'),
+        rollBtn: document.getElementById('roll-btn'),
+        clearBtn: document.getElementById('clear-btn'),
+        rebetBtn: document.getElementById('rebet-btn'),
+        rechargeBtn: document.getElementById('recharge-btn'),
+        toastLayer: document.getElementById('toast-layer'),
+        floatLayer: document.getElementById('float-layer'),
+        historyList: document.getElementById('history-list'),
+        historyHint: document.getElementById('history-hint'),
+        dice: [
+          document.getElementById('die-1'),
+          document.getElementById('die-2'),
+          document.getElementById('die-3'),
+        ],
+        chipBtns: [...document.querySelectorAll('.chip-btn')],
+        betCells: [...document.querySelectorAll('.bet-cell')],
+      };
+
+      const format = (n) => Number(n).toLocaleString('en-US');
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      /* ——— Web Audio SFX (no external files) ——— */
+      const audio = {
+        ctx: null,
+        ensure() {
+          if (!this.ctx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            this.ctx = new AC();
+          }
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          return this.ctx;
+        },
+        tone(freq, duration, type = 'sine', gain = 0.08, when = 0) {
+          const ctx = this.ensure();
+          if (!ctx) return;
+          const t0 = ctx.currentTime + when;
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+          osc.connect(g);
+          g.connect(ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + duration + 0.02);
+        },
+        noiseBurst(duration = 0.05, gain = 0.04) {
+          const ctx = this.ensure();
+          if (!ctx) return;
+          const len = Math.floor(ctx.sampleRate * duration);
+          const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < len; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+          const src = ctx.createBufferSource();
+          const g = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = 1800;
+          filter.Q.value = 0.8;
+          src.buffer = buffer;
+          g.gain.value = gain;
+          src.connect(filter);
+          filter.connect(g);
+          g.connect(ctx.destination);
+          src.start();
+        },
+        chip() {
+          this.tone(920, 0.045, 'triangle', 0.06);
+          this.tone(1400, 0.03, 'square', 0.025, 0.02);
+        },
+        diceRattle() {
+          this.noiseBurst(0.06, 0.05);
+          this.tone(220 + Math.random() * 80, 0.04, 'sawtooth', 0.02);
+        },
+        diceStop() {
+          this.tone(180, 0.12, 'triangle', 0.07);
+          this.tone(110, 0.18, 'sine', 0.05, 0.04);
+        },
+        win() {
+          // Bright arpeggio C-E-G-C
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((f, i) => this.tone(f, 0.22, 'sine', 0.09, i * 0.09));
+          this.tone(1318.5, 0.35, 'triangle', 0.05, 0.38);
+        },
+        lose() {
+          this.tone(260, 0.18, 'triangle', 0.05);
+          this.tone(180, 0.28, 'sine', 0.045, 0.12);
+        },
+        warn() {
+          this.tone(420, 0.1, 'square', 0.035);
+          this.tone(320, 0.14, 'square', 0.03, 0.1);
+        },
+        recharge() {
+          this.tone(392, 0.12, 'sine', 0.07);
+          this.tone(523.25, 0.16, 'sine', 0.07, 0.1);
+          this.tone(659.25, 0.2, 'triangle', 0.06, 0.2);
+        },
+      };
+
+      function betTotal() {
+        return Object.values(state.bets).reduce((sum, v) => sum + v, 0);
+      }
+
+      function updateRechargeVisibility() {
+        const broke = state.credits <= 0 && betTotal() === 0;
+        els.rechargeBtn.classList.toggle('is-visible', broke);
+      }
+
+      function updateDisplays() {
+        els.credit.textContent = format(state.credits);
+        els.betTotal.textContent = format(betTotal());
+        updateRechargeVisibility();
+      }
+
+      function showToast(text, kind = 'win') {
+        const el = document.createElement('div');
+        el.className = `toast ${kind === 'lose' ? 'lose' : kind === 'warn' ? 'warn' : ''}`.trim();
+        el.textContent = text;
+        els.toastLayer.appendChild(el);
+        setTimeout(() => el.remove(), 2500);
+      }
+
+      function showFloatingPayout(amount) {
+        const el = document.createElement('div');
+        el.className = 'float-payout';
+        el.textContent = `+${format(amount)}`;
+        els.floatLayer.appendChild(el);
+        setTimeout(() => el.remove(), 1900);
+      }
+
+      function setDieFace(el, value) {
+        const n = Number(value);
+        if (!n || n < 1 || n > 6) {
+          el.dataset.value = '0';
+          el.classList.add('is-blank');
+          return;
+        }
+        el.classList.remove('is-blank');
+        el.dataset.value = String(n);
+      }
+
+      function updateBetBadge(cell) {
+        const key = cell.dataset.bet;
+        const amount = state.bets[key] || 0;
+        let badge = cell.querySelector('.chip-badge');
+        if (amount > 0) {
+          cell.classList.add('has-bet');
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'chip-badge';
+            cell.appendChild(badge);
+          }
+          badge.textContent = format(amount);
+        } else {
+          cell.classList.remove('has-bet');
+          if (badge) badge.remove();
+        }
+      }
+
+      function refreshAllBadges() {
+        els.betCells.forEach(updateBetBadge);
+      }
+
+      function clearWinHighlights() {
+        els.betCells.forEach((cell) => cell.classList.remove('is-win'));
+      }
+
+      function highlightWins(wins) {
+        clearWinHighlights();
+        Object.keys(wins).forEach((key) => {
+          const cell = els.root.querySelector(`.bet-cell[data-bet="${key}"]`);
+          if (cell) cell.classList.add('is-win');
+        });
+      }
+
+      function setControlsLocked(locked) {
+        state.rolling = locked;
+        els.root.classList.toggle('ui-locked', locked);
+        els.rollBtn.disabled = locked;
+        els.clearBtn.disabled = locked;
+        els.rebetBtn.disabled = locked;
+        els.chipBtns.forEach((btn) => { btn.disabled = locked; });
+        els.betCells.forEach((cell) => { cell.disabled = locked; });
+      }
+
+      function labelForBet(key) {
+        const map = { big: 'BIG', small: 'SMALL', odd: 'ODD', even: 'EVEN', 'any-triple': 'ANY TRIPLE' };
+        if (map[key]) return map[key];
+        if (key.startsWith('total-')) return `합계 ${key.slice(6)}`;
+        if (key.startsWith('triple-')) {
+          const n = key.slice(7);
+          return `트리플 ${n}-${n}-${n}`;
+        }
+        return key.toUpperCase();
+      }
+
+      function renderHistory() {
+        els.historyList.innerHTML = '';
+        if (!state.history.length) {
+          els.historyHint.hidden = false;
+          return;
+        }
+        els.historyHint.hidden = true;
+        state.history.forEach((item) => {
+          const card = document.createElement('div');
+          card.className = 'history-item flex shrink-0 flex-col items-center rounded-lg px-2 py-1.5 text-center';
+          const tagClass = item.triple ? 'tag-triple' : item.size === 'BIG' ? 'tag-big' : 'tag-small';
+          const tag = item.triple ? 'TRIPLE' : item.size;
+          card.innerHTML = `
+            <span class="font-display text-[0.7rem] text-amber-100/80">${item.dice.join('-')}</span>
+            <span class="font-display text-sm font-bold text-gold-bright">Σ ${item.sum}</span>
+            <span class="text-[0.65rem] font-semibold ${tagClass}">${tag}</span>
+          `;
+          els.historyList.appendChild(card);
+        });
+      }
+
+      function pushHistory(dice, sum, triple) {
+        const size = triple ? 'TRIPLE' : sum >= 11 ? 'BIG' : 'SMALL';
+        state.history.unshift({
+          dice: [...dice],
+          sum,
+          triple,
+          size: triple ? 'TRIPLE' : size,
+        });
+        if (state.history.length > HISTORY_LIMIT) state.history.length = HISTORY_LIMIT;
+        renderHistory();
+      }
+
+      function placeBet(key) {
+        if (state.rolling) return;
+        if (!Object.prototype.hasOwnProperty.call(PAYOUTS, key)) return;
+
+        const chip = state.selectedChip;
+        if (state.credits < chip) {
+          audio.warn();
+          showToast('잔액 부족 · 칩이 모자랍니다', 'warn');
+          els.message.textContent = '보유 칩이 부족합니다';
+          updateRechargeVisibility();
+          return;
+        }
+
+        clearWinHighlights();
+        audio.chip();
+        state.credits -= chip;
+        state.bets[key] = (state.bets[key] || 0) + chip;
+        updateDisplays();
+
+        const cell = els.root.querySelector(`.bet-cell[data-bet="${key}"]`);
+        if (cell) updateBetBadge(cell);
+
+        els.message.classList.remove('result-flash');
+        els.message.textContent = `${labelForBet(key)}에 ${format(chip)}칩 베팅 (총 ${format(state.bets[key])})`;
+      }
+
+      function clearBets({ refund = true } = {}) {
+        if (state.rolling) return;
+        if (refund) state.credits += betTotal();
+        state.bets = Object.create(null);
+        clearWinHighlights();
+        refreshAllBadges();
+        updateDisplays();
+        els.message.classList.remove('result-flash');
+        els.message.textContent = refund
+          ? '베팅이 취소되었습니다'
+          : '칩을 선택한 뒤 베팅 구역을 클릭하세요';
+      }
+
+      function rebet() {
+        if (state.rolling) return;
+        const entries = Object.entries(state.lastBets);
+        if (!entries.length) {
+          showToast('반복할 이전 베팅이 없습니다', 'warn');
+          return;
+        }
+        const needed = entries.reduce((sum, [, v]) => sum + v, 0);
+        if (state.credits < needed) {
+          audio.warn();
+          showToast('Rebet 잔액 부족', 'warn');
+          return;
+        }
+        clearBets({ refund: true });
+        for (const [key, amount] of entries) {
+          state.credits -= amount;
+          state.bets[key] = amount;
+        }
+        audio.chip();
+        refreshAllBadges();
+        updateDisplays();
+        els.message.textContent = `이전 베팅을 반복했습니다 (총 ${format(needed)}칩)`;
+      }
+
+      function recharge() {
+        if (state.rolling) return;
+        if (state.credits > 0 || betTotal() > 0) return;
+        state.credits = RECHARGE_AMOUNT;
+        audio.recharge();
+        showToast(`+${format(RECHARGE_AMOUNT)} 무료 충전`, 'win');
+        els.message.textContent = `${format(RECHARGE_AMOUNT)}칩이 충전되었습니다`;
+        updateDisplays();
+      }
+
+      function rollDie() {
+        return 1 + Math.floor(Math.random() * 6);
+      }
+
+      function isTriple(dice) {
+        return dice[0] === dice[1] && dice[1] === dice[2];
+      }
+
+      function evaluateWins(dice) {
+        const sum = dice[0] + dice[1] + dice[2];
+        const triple = isTriple(dice);
+        const wins = Object.create(null);
+
+        if (!triple) {
+          if (sum >= 11 && sum <= 17) wins.big = true;
+          if (sum >= 4 && sum <= 10) wins.small = true;
+          if (sum % 2 === 1) wins.odd = true;
+          else wins.even = true;
+        }
+
+        if (sum >= 4 && sum <= 17) wins[`total-${sum}`] = true;
+
+        if (triple) {
+          wins[`triple-${dice[0]}`] = true;
+          wins['any-triple'] = true;
+        }
+
+        return { wins, sum, triple };
+      }
+
+      function settle(dice) {
+        const { wins, sum, triple } = evaluateWins(dice);
+        let payout = 0;
+        let winCount = 0;
+
+        for (const [key, stake] of Object.entries(state.bets)) {
+          if (wins[key]) {
+            payout += stake + stake * (PAYOUTS[key] || 0);
+            winCount += 1;
+          }
+        }
+
+        state.lastBets = { ...state.bets };
+        state.credits += payout;
+        state.bets = Object.create(null);
+        refreshAllBadges();
+        updateDisplays();
+        highlightWins(wins);
+        pushHistory(dice, sum, triple);
+
+        const face = `${dice.join('-')} · 합 ${sum}`;
+        const parity = sum % 2 === 1 ? '홀' : '짝';
+        const size = sum >= 11 ? '대' : '소';
+        const meta = triple ? '트리플 → 대/소·홀/짝 하우스 승' : `${size}/${parity}`;
+
+        if (winCount > 0) {
+          audio.win();
+          showToast(`WIN +${format(payout)}`, 'win');
+          showFloatingPayout(payout);
+          els.message.textContent = `${face} (${meta}) · 당첨 ${winCount}곳 · +${format(payout)}칩`;
+          els.message.classList.add('result-flash');
+        } else {
+          audio.lose();
+          showToast('LOSS', 'lose');
+          els.message.textContent = `${face} (${meta}) · 낙첨`;
+          els.message.classList.remove('result-flash');
+        }
+
+        updateRechargeVisibility();
+      }
+
+      async function animateRoll(finalDice) {
+        els.shaker.classList.add('is-shaking');
+        els.dice.forEach((el) => el.classList.add('is-tumbling'));
+
+        const started = performance.now();
+        let lastRattle = 0;
+        while (performance.now() - started < ROLL_DURATION_MS) {
+          els.dice.forEach((el) => setDieFace(el, rollDie()));
+          const now = performance.now();
+          if (now - lastRattle > 140) {
+            audio.diceRattle();
+            lastRattle = now;
+          }
+          await sleep(TUMBLE_TICK_MS);
+        }
+
+        els.dice.forEach((el, i) => {
+          el.classList.remove('is-tumbling');
+          setDieFace(el, finalDice[i]);
+        });
+        els.shaker.classList.remove('is-shaking');
+        audio.diceStop();
+      }
+
+      async function roll() {
+        if (state.rolling) return;
+        if (betTotal() === 0) {
+          showToast('먼저 베팅을 해주세요', 'warn');
+          els.message.textContent = '먼저 베팅을 해주세요';
+          return;
+        }
+
+        audio.ensure();
+        clearWinHighlights();
+        setControlsLocked(true);
+        els.message.classList.remove('result-flash');
+        els.message.textContent = '주사위 굴리는 중…';
+
+        try {
+          const finalDice = [rollDie(), rollDie(), rollDie()];
+          state.dice = finalDice;
+          await animateRoll(finalDice);
+          settle(finalDice);
+        } catch (err) {
+          console.error(err);
+          els.message.textContent = '굴리기 오류: ' + (err && err.message ? err.message : String(err));
+        } finally {
+          setControlsLocked(false);
+        }
+      }
+
+      window.__sicBoRoll = roll;
+      window.__sicBoEvaluate = evaluateWins;
+
+      els.chipBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (state.rolling) return;
+          els.chipBtns.forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          state.selectedChip = Number(btn.dataset.chip);
+          audio.chip();
+        });
+      });
+
+      els.betCells.forEach((cell) => {
+        cell.addEventListener('click', () => placeBet(cell.dataset.bet));
+      });
+
+      els.clearBtn.addEventListener('click', () => clearBets({ refund: true }));
+      els.rebetBtn.addEventListener('click', rebet);
+      els.rechargeBtn.addEventListener('click', recharge);
+      els.rollBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        roll();
+      });
+
+      // Unlock audio on first user gesture
+      const unlock = () => audio.ensure();
+      window.addEventListener('pointerdown', unlock, { once: true });
+
+      renderHistory();
+      updateDisplays();
+    })();
+  </script>
+</body>
+</html>
